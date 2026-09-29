@@ -2,6 +2,7 @@ package app.revanced.patches.instagram.misc.screenshot
 
 import app.revanced.patcher.extensions.addInstructions
 import app.revanced.patcher.patch.bytecodePatch
+import app.revanced.patches.instagram.misc.extension.sharedExtensionPatch
 import app.revanced.patches.all.misc.transformation.IMethodCall
 import app.revanced.patches.all.misc.transformation.filterMapInstruction35c
 import app.revanced.patches.all.misc.transformation.transformInstructionsPatch
@@ -20,9 +21,10 @@ val removeScreenshotRestrictionPatch = bytecodePatch(
     use = true,
 ) {
     compatibleWith("com.instagram.android"("443.0.0.48.82"))
-    extendWith("extensions/instagram/instagram.rve")
 
     dependsOn(
+        // Bundles the Instagram extension that holds the replacement addFlags/setFlags methods.
+        sharedExtensionPatch,
         transformInstructionsPatch(
             filterMap = { classDef, _, instruction, instructionIndex ->
                 filterMapInstruction35c<MethodCall>(
