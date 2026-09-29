@@ -3,6 +3,16 @@
 Notes for keeping the Instagram patches working on new Instagram releases, plus the
 findings of a full code review done on 2026-09-29 (base: Instagram 443.0.0.48.82).
 
+## Why the package is `app.igrevanced`
+
+ReVanced Manager loads every patch bundle, including the official one it always keeps,
+through a single class loader, and the first bundle wins for any class or resource name
+they share. With the upstream names (`app.revanced.patches.*`, `extensions/instagram.rve`),
+patches picked from this bundle silently ran the official bundle's code. So this bundle's
+patch code lives in `app.igrevanced.*` and its extensions under
+`extensions/instagram-revanced-patches/`. Keep both unique when adding or porting patches.
+Code injected into Instagram (`app.revanced.extension.*`) is unaffected.
+
 ## Review findings
 
 Nothing in the patches or the Instagram extension sends data anywhere. The only network
