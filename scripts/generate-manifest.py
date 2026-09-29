@@ -1,15 +1,36 @@
 #!/usr/bin/env python3
+import glob
 import json
 import os
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
+
+# The repository these patches originate from. Forks show a "Fork of" credit on their page.
+UPSTREAM_REPOSITORY = "bluecxt/instagram-revanced-patches"
+
+
+def compatible_versions():
+    """Instagram versions declared in the patches' compatibleWith(...) calls."""
+    pattern = re.compile(r'"com\.instagram\.android"\(([^)]*)\)')
+    versions = set()
+    for path in glob.glob("patches/src/main/kotlin/**/*.kt", recursive=True):
+        with open(path) as fp:
+            for match in pattern.finditer(fp.read()):
+                versions.update(re.findall(r'"([^"]+)"', match.group(1)))
+    return sorted(versions) or ["443.0.0.48.82"]
+
 
 def main():
     tag = os.environ.get("RELEASE_TAG", "v1.0.1")
     repo = os.environ.get("GITHUB_REPOSITORY", "bluecxt/instagram-revanced-patches")
     user = repo.split("/")[0] if "/" in repo else "bluecxt"
     reponame = repo.split("/")[1] if "/" in repo else "instagram-revanced-patches"
+    upstream = os.environ.get("UPSTREAM_REPOSITORY", UPSTREAM_REPOSITORY)
+    is_fork = repo.lower() != upstream.lower()
+    versions = compatible_versions()
+    versions_text = ", ".join(versions)
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
     out_dir = sys.argv[1] if len(sys.argv) > 1 else "public"
@@ -32,7 +53,7 @@ def main():
 
     descriptions = {
         "Hide ads": "Complete ad-blocker eliminating sponsored items from the Main Feed, Reels, and Stories without crashes.",
-        "Download media": "Adds a Download option to the post and Reels menu to save photos and videos.",
+        "Download media": "Adds a Download option to the post, carousel, Reels and story menus. Saves to one folder with a subfolder per account.",
         "Disable swipe navigation": "Disables swiping between the main navigation tabs and swiping to the camera.",
         "Disable analytics": "Disables analytics that are sent periodically.",
         "Remove build expired popup": "Removes the popup that appears after a while, when the app version ages.",
@@ -67,14 +88,14 @@ def main():
             "compatiblePackages": [
                 {
                     "name": "com.instagram.android",
-                    "versions": ["443.0.0.48.82"]
+                    "versions": versions
                 }
             ]
         })
 
     manifest = {
-        "name": "Instagram ReVanced Patches - bluecxt",
-        "description": "Dedicated ReVanced patches for Instagram v443.0.0.48.82",
+        "name": f"Instagram ReVanced Patches - {user}",
+        "description": f"Dedicated ReVanced patches for Instagram {versions_text}",
         "version": tag,
         "created_at": now_iso,
         "download_url": download_url,
@@ -89,12 +110,17 @@ def main():
         json.dump(patches, fp, indent=2)
 
     # Simple HTML landing page
+    source_url = f"https://{user}.github.io/{reponame}/patches.json"
+    fork_note = (
+        f'<p>Fork of <a href="https://github.com/{upstream}">{upstream}</a>.</p>' if is_fork else ""
+    )
     with open(os.path.join(out_dir, "index.html"), "w") as fp:
         fp.write(f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Instagram ReVanced Patches - bluecxt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Instagram ReVanced Patches - {user}</title>
     <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }}
         code {{ background: #f4f4f4; padding: 4px 8px; border-radius: 4px; font-size: 0.95em; word-break: break-all; }}
@@ -104,13 +130,15 @@ def main():
     </style>
 </head>
 <body>
-    <h1>📸 Instagram ReVanced Patches - bluecxt</h1>
-    <p>Official ReVanced Manager source endpoint for Instagram patches.</p>
+    <h1>📸 Instagram ReVanced Patches - {user}</h1>
+    <p>ReVanced Manager source for these Instagram patches.</p>
+    {fork_note}
     <div class="box">
         <strong>ReVanced Manager Source URL:</strong><br>
-        <code>https://{user}.github.io/{reponame}/patches.json</code>
+        <code>{source_url}</code>
     </div>
-    <p>Latest Version: <b>{tag}</b></p>
+    <p>In ReVanced Manager 2.x: open the <b>Patches</b> tab, tap <b>Add patches</b>, choose <b>Remote</b>, tap <b>Next</b> and enter the URL above.</p>
+    <p>Latest Version: <b>{tag}</b> &middot; Instagram {versions_text}</p>
     <p><a href="{download_url}">Download latest .rvp bundle</a></p>
     <p><a href="https://github.com/{repo}">View GitHub Repository</a></p>
 </body>
