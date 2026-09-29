@@ -2,6 +2,7 @@ package app.igrevanced.patches.instagram.reels.autoscroll
 
 import app.revanced.patcher.gettingFirstMethodDeclaratively
 import app.revanced.patcher.patch.BytecodePatchContext
+import app.revanced.patcher.returnType
 
 /**
  * Matches the feature availability gate that determines
