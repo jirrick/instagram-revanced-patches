@@ -670,49 +670,97 @@ public final class DownloadMediaPatch {
         }
     }
 
-    private static final String SUBDIR = "Instagram/downloads";
+    private static final String DEFAULT_FOLDER = "Pictures/Instagram";
+    private static final String FALLBACK_FOLDER = "DCIM/Instagram";
+
+    private static String getDownloadFolder() {
+        // Method is modified during patching to return the "Download folder" patch option.
+        throw new IllegalStateException();
+    }
+
+    /**
+     * The configured base folder, relative to the shared storage root, e.g. "Pictures/Instagram".
+     * Android only lets apps write photos to Pictures/ or DCIM/ (videos also to Movies/),
+     * so anything else is placed under Pictures/.
+     */
+    private static String getBaseFolder() {
+        String folder;
+        try {
+            folder = getDownloadFolder();
+        } catch (Throwable ex) {
+            folder = null;
+        }
+        if (folder == null) folder = DEFAULT_FOLDER;
+
+        folder = folder.trim().replace('\\', '/');
+        while (folder.startsWith("/")) folder = folder.substring(1);
+        while (folder.endsWith("/")) folder = folder.substring(0, folder.length() - 1);
+        if (folder.isEmpty()) return DEFAULT_FOLDER;
+
+        String root = folder.contains("/") ? folder.substring(0, folder.indexOf('/')) : folder;
+        if (!root.equals(Environment.DIRECTORY_PICTURES) && !root.equals(Environment.DIRECTORY_DCIM)) {
+            folder = Environment.DIRECTORY_PICTURES + "/" + folder;
+        }
+        return folder;
+    }
 
     private static boolean saveToGallery(InputStream input, String name, String username, boolean isVideo)
             throws Exception {
-        Context context = Utils.getContext();
-        String relativeBase = (isVideo ? Environment.DIRECTORY_MOVIES : Environment.DIRECTORY_PICTURES)
-                + "/" + SUBDIR + "/" + username;
+        String accountFolder = getBaseFolder() + "/" + username;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Context context = Utils.getContext();
             ContentResolver resolver = context.getContentResolver();
             Uri collection = isVideo
                     ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI
                     : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
 
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
-            values.put(MediaStore.MediaColumns.MIME_TYPE, isVideo ? "video/mp4" : "image/jpeg");
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativeBase);
-            values.put(MediaStore.MediaColumns.IS_PENDING, 1);
-
-            Uri item = resolver.insert(collection, values);
+            Uri item = insertPending(resolver, collection, name, isVideo, accountFolder);
+            if (item == null) {
+                // Older Android versions refuse videos under Pictures/; DCIM/ accepts both.
+                String fallback = FALLBACK_FOLDER + "/" + username;
+                Logger.printInfo(() -> "Insert into " + accountFolder + " refused, using " + fallback);
+                item = insertPending(resolver, collection, name, isVideo, fallback);
+            }
             if (item == null) return false;
+
             try (OutputStream output = resolver.openOutputStream(item)) {
                 if (output == null) return false;
                 copy(input, output);
+            } catch (Exception ex) {
+                resolver.delete(item, null, null);
+                throw ex;
             }
-            values.clear();
+            ContentValues values = new ContentValues();
             values.put(MediaStore.MediaColumns.IS_PENDING, 0);
             resolver.update(item, values, null, null);
             return true;
         } else {
-            File dir = new File(Environment.getExternalStoragePublicDirectory(
-                    isVideo ? Environment.DIRECTORY_MOVIES : Environment.DIRECTORY_PICTURES),
-                    SUBDIR + "/" + username);
+            File dir = new File(Environment.getExternalStorageDirectory(), accountFolder);
             //noinspection ResultOfMethodCallIgnored
             dir.mkdirs();
             File file = new File(dir, name);
             try (OutputStream output = new FileOutputStream(file)) {
                 copy(input, output);
             }
-            MediaStore.Images.Media.insertImage(context.getContentResolver(),
-                    file.getAbsolutePath(), name, null);
+            android.media.MediaScannerConnection.scanFile(Utils.getContext(),
+                    new String[]{file.getAbsolutePath()}, null, null);
             return true;
+        }
+    }
+
+    private static Uri insertPending(ContentResolver resolver, Uri collection, String name,
+                                     boolean isVideo, String relativePath) {
+        try {
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+            values.put(MediaStore.MediaColumns.MIME_TYPE, isVideo ? "video/mp4" : "image/jpeg");
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath + "/");
+            values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+            return resolver.insert(collection, values);
+        } catch (Exception ex) {
+            Logger.printException(() -> "MediaStore insert failed for " + relativePath, ex);
+            return null;
         }
     }
 

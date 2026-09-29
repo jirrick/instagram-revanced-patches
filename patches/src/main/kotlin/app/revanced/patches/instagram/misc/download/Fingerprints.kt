@@ -151,3 +151,12 @@ internal fun BytecodePatchContext.getAddClipsRowMethod(optionsConfigType: String
         addClipsRowSignature()
         custom { !forwardsDestructiveFlag() }
     }
+
+// Extension stub whose body is replaced with the "Download folder" option value.
+internal val BytecodePatchContext.getDownloadFolderMethod by gettingFirstMethodDeclaratively {
+    name("getDownloadFolder")
+    definingClass(EXTENSION_CLASS_DESCRIPTOR)
+    accessFlags(AccessFlags.PRIVATE, AccessFlags.STATIC)
+    returnType("Ljava/lang/String;")
+    parameterTypes()
+}

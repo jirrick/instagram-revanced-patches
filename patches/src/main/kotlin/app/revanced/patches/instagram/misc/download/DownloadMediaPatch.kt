@@ -7,15 +7,19 @@ import app.revanced.patcher.extensions.addInstructionsWithLabels
 import app.revanced.patcher.extensions.getInstruction
 import app.revanced.patcher.firstImmutableClassDef
 import app.revanced.patcher.patch.bytecodePatch
+import app.revanced.patcher.patch.stringOption
 import app.revanced.patches.instagram.misc.extension.sharedExtensionPatch
 import app.revanced.util.getFreeRegisterProvider
 import app.revanced.util.indexOfFirstInstructionOrThrow
+import app.revanced.util.returnEarly
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
-private const val EXTENSION_CLASS_DESCRIPTOR =
+internal const val EXTENSION_CLASS_DESCRIPTOR =
     "Lapp/revanced/extension/instagram/download/DownloadMediaPatch;"
+
+private const val DEFAULT_DOWNLOAD_FOLDER = "Pictures/Instagram"
 
 private const val MEDIA_CLASS_DESCRIPTOR = "Lcom/instagram/feed/media/Media;"
 private const val ACTIVITY_CLASS_DESCRIPTOR = "Landroidx/fragment/app/FragmentActivity;"
@@ -30,7 +34,16 @@ val downloadMediaPatch = bytecodePatch(
 
     dependsOn(sharedExtensionPatch)
 
+    val downloadFolder by stringOption(
+        default = DEFAULT_DOWNLOAD_FOLDER,
+        name = "Download folder",
+        description = "Folder in shared storage to save downloads to, e.g. \"Pictures/Instagram\". " +
+            "Each account gets its own subfolder. Paths outside Pictures/ or DCIM/ are placed under Pictures/.",
+    )
+
     apply {
+        getDownloadFolderMethod.returnEarly(downloadFolder?.takeIf { it.isNotBlank() } ?: DEFAULT_DOWNLOAD_FOLDER)
+
         // Append a download row once per menu build. p2 = creator, p4 = the row list.
         addOptionRowMethod.apply {
             val returnIndex = indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID)
