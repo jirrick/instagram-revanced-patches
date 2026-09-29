@@ -54,7 +54,12 @@ jobs:
         env:
           ORG_GRADLE_PROJECT_githubPackagesUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesPassword: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid --no-daemon
+        # Branch builds carry the commit in their version, so ReVanced Manager's patch list
+        # shows which build an app was patched with. Tagged releases keep the plain version.
+        run: |
+          VERSION=$(sed -n 's/^version *= *//p' gradle.properties)
+          if [[ "$GITHUB_REF" != refs/tags/* ]]; then VERSION="$VERSION-${GITHUB_SHA::7}"; fi
+          ./gradlew :patches:buildAndroid --no-daemon -Pversion="$VERSION"
 
       - name: Generate GitHub Pages & JSON Manifests
         env:
