@@ -24,6 +24,11 @@ def compatible_versions():
 
 def main():
     tag = os.environ.get("RELEASE_TAG", "v1.0.1")
+    # ReVanced Manager only re-downloads a bundle when "version" changes, so branch builds
+    # (tag == branch name) get the commit appended; tagged releases keep their tag.
+    sha = os.environ.get("GITHUB_SHA", "")[:7]
+    if not tag.startswith("v") and sha:
+        tag = f"{tag}-{sha}"
     repo = os.environ.get("GITHUB_REPOSITORY", "bluecxt/instagram-revanced-patches")
     user = repo.split("/")[0] if "/" in repo else "bluecxt"
     reponame = repo.split("/")[1] if "/" in repo else "instagram-revanced-patches"
