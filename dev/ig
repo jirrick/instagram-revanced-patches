@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Host-side entry point: runs dev/in-container.sh inside the toolchain container.
+# Only this repo folder and a named Docker volume (caches) are visible to the container.
+#
+#   ./dev/ig build                      build the .rvp patch bundle
+#   ./dev/ig merge work/ig.apkm         bundle -> single APK
+#   ./dev/ig decompile work/ig.apk      jadx sources into work/jadx/
+#   ./dev/ig patch work/ig.apk          patch with Hide ads, Download media, Anonymous story viewing
+#   ./dev/ig list                       all patches, options and supported versions
+#   ./dev/ig adb pair IP:PORT / adb connect IP:PORT / install
+#   ./dev/ig shell                      interactive shell in the container
+set -euo pipefail
+
+REPO=$(cd "$(dirname "$0")/.." && pwd)
+IMAGE=ig-revanced-dev
+VOLUME=ig-revanced-cache
+
+command -v docker > /dev/null || { echo "docker not found (install OrbStack, Colima or Docker Desktop)" >&2; exit 1; }
+
+# Rebuild the image when the Dockerfile changes.
+hash=$(shasum "$REPO/dev/Dockerfile" | cut -c1-12)
+if [ "$(docker image inspect -f '{{index .Config.Labels "dockerfile"}}' "$IMAGE" 2>/dev/null)" != "$hash" ]; then
+    echo "Building $IMAGE image (first run takes a few minutes)..."
+    docker build --platform linux/amd64 --label "dockerfile=$hash" -t "$IMAGE" "$REPO/dev"
+fi
+
+tty=(); [ -t 0 ] && [ -t 1 ] && tty=(-it)
+exec docker run --rm "${tty[@]}" --platform linux/amd64 \
+    -v "$REPO:/repo" \
+    -v "$VOLUME:/cache" \
+    -e ENABLE -e FORCE \
+    "$IMAGE" "$@"

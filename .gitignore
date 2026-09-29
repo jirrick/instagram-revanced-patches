@@ -137,3 +137,7 @@ local.properties
 # Build & generated files
 public/
 
+
+# Dev container workspace: APKs, decompiled sources, keystore
+/work/
+local.properties

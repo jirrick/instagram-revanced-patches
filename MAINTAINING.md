@@ -45,6 +45,41 @@ Housekeeping: `misc/privacy/SanitizeSharingLinksPatch.java` duplicates
 `misc/share/privacy/SanitizeSharingLinksPatch.java` (the first is unused), and the repo
 still carries upstream YouTube/Reddit resources and shared code that Instagram never uses.
 
+## Local toolchain (Mac, containerized)
+
+Everything runs in a Docker container: JDK 17, Android SDK, jadx, ReVanced CLI and
+APKEditor. The container sees only this repo folder and one Docker volume
+(`ig-revanced-cache`) for caches, so nothing is installed on macOS itself.
+
+One-time setup:
+
+1. Install a Docker runtime: [OrbStack](https://orbstack.dev) (free for personal use, uses
+   Rosetta for amd64 automatically) or Colima (`brew install colima docker`, then
+   `colima start --vm-type vz --vz-rosetta --memory 8`). Give it at least 8 GB RAM for jadx.
+2. Clone the repo and run `./dev/ig tools`. The first run builds the image, the tools
+   download into the cache volume.
+3. On the phone, turn on Developer options → Wireless debugging, then
+   `./dev/ig adb pair IP:PAIRPORT` (enter the pairing code) and `./dev/ig adb connect IP:PORT`.
+
+Everyday commands (put APKs in `work/`, which is gitignored):
+
+| Command | What it does |
+|---|---|
+| `./dev/ig build` | Builds `patches/build/libs/*.rvp` |
+| `./dev/ig merge work/instagram.apkm` | APKMirror bundle → single APK |
+| `./dev/ig decompile work/instagram-merged.apk` | jadx sources into `work/jadx/` |
+| `./dev/ig patch work/instagram-merged.apk` | Hide ads + Download media + Anonymous story viewing (plus bundle defaults) → `work/instagram-patched.apk`. `ENABLE="A;B"` changes the set, `FORCE=1` skips the version check. |
+| `./dev/ig list` | Every patch with its options and supported versions |
+| `./dev/ig install` | Installs the last patched APK over Wireless debugging |
+| `./dev/ig shell` | Shell inside the container |
+
+`work/instagram.keystore` is created on the first patch. Keep it (back it up): Android only
+installs an update over the existing app when it's signed with the same key. Switching from
+MyInsta or a Manager-patched build needs one uninstall first, for the same reason.
+
+The first `patch` run is the check that the CLI flags match the current ReVanced CLI
+release; if not, `./dev/ig cli patch --help` shows the right ones.
+
 ## Porting to a new Instagram version
 
 1. **Get the APK.** Download the newest *stable* `com.instagram.android` from APKMirror,
