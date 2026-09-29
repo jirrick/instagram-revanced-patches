@@ -37,7 +37,8 @@ val downloadMediaPatch = bytecodePatch(
     val downloadFolder by stringOption(
         default = DEFAULT_DOWNLOAD_FOLDER,
         name = "Download folder",
-        description = "Folder in shared storage to save downloads to, e.g. \"Pictures/Instagram\". " +
+        description = "Folder in shared storage to save downloads to, e.g. \"Pictures/Instagram\" " +
+            "or \"/storage/emulated/0/Pictures/Instagram\". " +
             "Each account gets its own subfolder. Paths outside Pictures/ or DCIM/ are placed under Pictures/.",
     )
 

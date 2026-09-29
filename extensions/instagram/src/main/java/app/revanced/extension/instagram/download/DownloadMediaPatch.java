@@ -697,12 +697,18 @@ public final class DownloadMediaPatch {
         if (folder == null) folder = DEFAULT_FOLDER;
 
         folder = folder.trim().replace('\\', '/');
+        // Manager's folder picker returns absolute paths; MediaStore wants them relative to the
+        // shared storage root, e.g. "/storage/emulated/0/Pictures/X" -> "Pictures/X".
+        folder = folder.replaceFirst(
+                "^/*(storage/emulated/\\d+|storage/self/primary|sdcard|mnt/sdcard)(/|$)", "");
+        String root = Environment.getExternalStorageDirectory().getAbsolutePath();
+        if (folder.startsWith(root)) folder = folder.substring(root.length());
         while (folder.startsWith("/")) folder = folder.substring(1);
         while (folder.endsWith("/")) folder = folder.substring(0, folder.length() - 1);
         if (folder.isEmpty()) return DEFAULT_FOLDER;
 
-        String root = folder.contains("/") ? folder.substring(0, folder.indexOf('/')) : folder;
-        if (!root.equals(Environment.DIRECTORY_PICTURES) && !root.equals(Environment.DIRECTORY_DCIM)) {
+        String top = folder.contains("/") ? folder.substring(0, folder.indexOf('/')) : folder;
+        if (!top.equals(Environment.DIRECTORY_PICTURES) && !top.equals(Environment.DIRECTORY_DCIM)) {
             folder = Environment.DIRECTORY_PICTURES + "/" + folder;
         }
         return folder;
