@@ -1,4 +1,4 @@
-# Maintaining this fork
+# Maintaining the patches
 
 Notes for keeping the Instagram patches working on new Instagram releases, plus the
 findings of a full code review done on 2026-09-29 (base: Instagram 443.0.0.48.82).
@@ -96,8 +96,8 @@ release; if not, `./dev/ig cli patch --help` shows the right ones.
 4. **Watch for silent skips.** Patches using `...OrNull` fingerprints (Hide ads story part,
    Disable analytics Facebook URL, share-link parsers) "succeed" without doing anything.
    Check the patched app, not just the log.
-5. **Bump versions.** Replace `443.0.0.48.82` in every `compatibleWith(...)` and in
-   `scripts/generate-manifest.py`, then push to `main`. CI builds the `.rvp` and publishes
-   it to GitHub Pages for ReVanced Manager.
+5. **Bump versions.** Replace `443.0.0.48.82` in every `compatibleWith(...)` (the Pages
+   manifest reads the version from there), then push to `main`. CI builds the `.rvp` and
+   publishes it to GitHub Pages for ReVanced Manager.
 6. **Test on the phone:** feed/reels/story ads, a post + carousel + reel + story download,
    and a story view from a second account to confirm ghost mode.
