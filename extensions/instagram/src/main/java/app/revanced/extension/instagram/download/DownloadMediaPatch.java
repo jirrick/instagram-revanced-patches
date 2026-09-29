@@ -143,7 +143,11 @@ public final class DownloadMediaPatch {
                 Utils.showToastShort("Download failed: no media URL");
                 return;
             }
-            download(item, username, 0);
+            if (download(item, username, 0)) {
+                Utils.showToastShort("Saved to " + getBaseFolder() + "/" + username);
+            } else {
+                Utils.showToastShort("Download failed");
+            }
         });
     }
 
